@@ -54,6 +54,18 @@ protocol.registerSchemesAsPrivileged([
 // 定义全局图标内存缓存
 const iconMemoryCache = new Map<string, Buffer>()
 
+// Windows 图标提取串行队列，避免同步调用并发阻塞主进程
+let iconExtractQueue: Promise<void> = Promise.resolve()
+
+function extractIconSerialized(iconPath: string, size: 16 | 32 | 64 | 256): Promise<Buffer | null> {
+  return new Promise((resolve) => {
+    iconExtractQueue = iconExtractQueue.then(() => {
+      const result = IconExtractor.getFileIcon(iconPath, size)
+      resolve(result)
+    })
+  })
+}
+
 // 配置 electron-log
 log.transports.file.level = 'debug'
 log.transports.file.maxSize = 5 * 1024 * 1024 // 5MB
@@ -144,8 +156,8 @@ export function registerIconProtocolForSession(targetSession: Electron.Session):
           }
         }
       } else {
-        // Windows: 使用原生模块提取图标
-        const iconBuffer = IconExtractor.getFileIcon(iconPath, 32)
+        // Windows: 使用原生模块提取图标（串行队列避免阻塞）
+        const iconBuffer = await extractIconSerialized(iconPath, 32)
         if (!iconBuffer) {
           throw new Error('Failed to extract icon')
         }
