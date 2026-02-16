@@ -505,6 +505,63 @@ class PluginManager {
     }
   }
 
+  /**
+   * 后台预加载插件（不显示在主窗口中，仅创建 WebContentsView 并缓存）
+   * 用于"跟随主程序同时启动运行"功能
+   */
+  public async preloadPlugin(pluginPath: string): Promise<void> {
+    if (!this.mainWindow) return
+
+    // 如果已经在缓存中，跳过
+    const existing = this.pluginViews.find((v) => v.path === pluginPath)
+    if (existing) {
+      console.log('[Plugin] 插件已在运行中，跳过预加载:', pluginPath)
+      return
+    }
+
+    try {
+      const pluginInfoFromDB = await this.fetchPluginInfoFromDB(pluginPath)
+      const pluginConfig = this.readPluginConfig(pluginPath)
+      const isDevelopment = !!pluginInfoFromDB?.isDevelopment
+      const { pluginUrl } = this.resolvePluginUrl(pluginPath, pluginConfig, isDevelopment)
+
+      const preloadPath = pluginConfig.preload
+        ? path.join(pluginPath, pluginConfig.preload)
+        : undefined
+
+      const sess = await this.setupPluginSession(pluginConfig.name)
+      const view = this.createPluginWebContentsView(sess, preloadPath)
+
+      // 注册事件监听
+      this.registerMainWindowPluginEvents(view, pluginPath)
+
+      // 缓存视图（但不添加到主窗口、不设为当前插件）
+      const logoUrl = this.buildPluginLogoUrl(pluginPath, pluginConfig.logo)
+      const pluginInfo: PluginViewInfo = {
+        path: pluginPath,
+        name: pluginConfig.name,
+        view,
+        subInputPlaceholder: '搜索',
+        subInputVisible: false,
+        logo: logoUrl,
+        isDevelopment
+      }
+      this.pluginViews.push(pluginInfo)
+
+      // 加载插件 URL
+      view.webContents.loadURL(pluginUrl)
+
+      view.webContents.on('dom-ready', () => {
+        view.webContents.insertCSS(GLOBAL_SCROLLBAR_CSS)
+        console.log('[Plugin] 后台预加载插件完成:', pluginConfig.name)
+      })
+
+      console.log('[Plugin] 后台预加载插件:', pluginConfig.name)
+    } catch (error) {
+      console.error('[Plugin] 后台预加载插件失败:', pluginPath, error)
+    }
+  }
+
   // 获取所有运行中的插件路径
   public getRunningPlugins(): string[] {
     return this.pluginViews.map((v) => v.path)

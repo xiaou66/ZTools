@@ -221,6 +221,29 @@ app.whenReady().then(async () => {
 
   // 初始化悬浮球（从配置决定是否显示）
   floatingBallManager.init()
+
+  // 自动启动已配置的"跟随主程序同时启动运行"的插件
+  if (mainWindow) {
+    try {
+      const autoStartPlugins = await api.dbGet('autoStartPlugin')
+      if (autoStartPlugins && Array.isArray(autoStartPlugins) && autoStartPlugins.length > 0) {
+        const plugins = await api.dbGet('plugins')
+        if (plugins && Array.isArray(plugins)) {
+          for (const pluginName of autoStartPlugins) {
+            const plugin = plugins.find((p: any) => p.name === pluginName)
+            if (plugin?.path) {
+              console.log('[Main] 自动启动插件:', pluginName)
+              pluginManager.preloadPlugin(plugin.path).catch((error) => {
+                console.error('[Main] 自动启动插件失败:', pluginName, error)
+              })
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[Main] 读取自动启动插件配置失败:', error)
+    }
+  }
 })
 
 app.on('window-all-closed', () => {

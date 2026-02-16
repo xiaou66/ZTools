@@ -875,6 +875,38 @@ onMounted(() => {
         console.error('切换自动分离配置失败:', error)
         alert(`操作失败: ${error.message || '未知错误'}`)
       }
+    } else if (command === 'toggle-auto-start') {
+      try {
+        // 读取当前配置
+        let autoStartPlugins: string[] = []
+        try {
+          const data = await window.ztools.dbGet('autoStartPlugin')
+          if (data && Array.isArray(data)) {
+            autoStartPlugins = data
+          }
+        } catch (error) {
+          console.debug('未找到 autoStartPlugin 配置', error)
+        }
+
+        const currentPluginName = windowStore.currentPlugin!.name
+        const index = autoStartPlugins.indexOf(currentPluginName)
+
+        if (index !== -1) {
+          // 已存在，移除
+          autoStartPlugins.splice(index, 1)
+        } else {
+          // 不存在，添加
+          autoStartPlugins.push(currentPluginName)
+        }
+
+        // 保存到数据库
+        await window.ztools.dbPut('autoStartPlugin', autoStartPlugins)
+
+        console.log('已更新 autoStartPlugin 配置:', autoStartPlugins)
+      } catch (error: any) {
+        console.error('切换跟随启动配置失败:', error)
+        alert(`操作失败: ${error.message || '未知错误'}`)
+      }
     }
   })
 })
@@ -913,6 +945,7 @@ async function handleSettingsClick(): Promise<void> {
     // 从数据库读取配置
     let outKillPlugins: string[] = []
     let autoDetachPlugins: string[] = []
+    let autoStartPlugins: string[] = []
     try {
       const killData = await window.ztools.dbGet('outKillPlugin')
       if (killData && Array.isArray(killData)) {
@@ -922,6 +955,10 @@ async function handleSettingsClick(): Promise<void> {
       if (detachData && Array.isArray(detachData)) {
         autoDetachPlugins = detachData
       }
+      const startData = await window.ztools.dbGet('autoStartPlugin')
+      if (startData && Array.isArray(startData)) {
+        autoStartPlugins = startData
+      }
     } catch (error) {
       console.log('读取配置失败（可能不存在）:', error)
     }
@@ -930,6 +967,7 @@ async function handleSettingsClick(): Promise<void> {
     const currentPluginName = windowStore.currentPlugin.name
     const isAutoKill = outKillPlugins.includes(currentPluginName)
     const isAutoDetach = autoDetachPlugins.includes(currentPluginName)
+    const isAutoStart = autoStartPlugins.includes(currentPluginName)
 
     // 根据平台显示不同的快捷键
     const platform = window.ztools.getPlatform()
@@ -953,6 +991,12 @@ async function handleSettingsClick(): Promise<void> {
             label: '自动分离为独立窗口',
             type: 'checkbox',
             checked: isAutoDetach
+          },
+          {
+            id: 'toggle-auto-start',
+            label: '跟随主程序同时启动运行',
+            type: 'checkbox',
+            checked: isAutoStart
           }
         ]
       },
