@@ -173,6 +173,9 @@ const api = {
   onUpdatePinnedRows: (callback: (rows: number) => void) => {
     ipcRenderer.on('update-pinned-rows', (_event, rows) => callback(rows))
   },
+  onUpdateTabTarget: (callback: (target: string) => void) => {
+    ipcRenderer.on('update-tab-target', (_event, target) => callback(target))
+  },
   onUpdateSearchMode: (callback: (mode: string) => void) => {
     ipcRenderer.on('update-search-mode', (_event, mode) => callback(mode))
   },

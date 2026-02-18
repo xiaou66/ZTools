@@ -55,6 +55,9 @@ export const useWindowStore = defineStore('window', () => {
   const placeholder = ref(DEFAULT_PLACEHOLDER)
   const avatar = ref(DEFAULT_AVATAR)
 
+  // Tab 键目标指令
+  const tabTargetCommand = ref('')
+
   // 当前插件信息
   const currentPlugin = ref<PluginInfo | null>(null)
   // 插件加载中状态（用于显示 loading 动效）
@@ -185,6 +188,10 @@ export const useWindowStore = defineStore('window', () => {
 
   function updateSearchMode(mode: SearchMode): void {
     searchMode.value = mode
+  }
+
+  function updateTabTargetCommand(value: string): void {
+    tabTargetCommand.value = value
   }
 
   function updateTheme(value: string): void {
@@ -495,6 +502,9 @@ export const useWindowStore = defineStore('window', () => {
         if (data.searchMode) {
           searchMode.value = data.searchMode
         }
+        if (data.tabTargetCommand !== undefined) {
+          tabTargetCommand.value = data.tabTargetCommand
+        }
       } else {
         // 默认蓝色
         updatePrimaryColor('blue')
@@ -546,6 +556,8 @@ export const useWindowStore = defineStore('window', () => {
     updatePinnedRows,
     searchMode,
     updateSearchMode,
+    tabTargetCommand,
+    updateTabTargetCommand,
     updateTheme,
     updatePrimaryColor,
     updateCustomColor,

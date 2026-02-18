@@ -369,6 +369,47 @@
           </label>
         </div>
       </div>
+
+      <div class="setting-item">
+        <div class="setting-label">
+          <span>Tab 键目标指令</span>
+          <span class="setting-desc"
+            >配置后在搜索框输入文字按 Tab 键可直接进入对应指令，常用于快速打开 AI
+            对话等场景</span
+          >
+        </div>
+        <div class="setting-control">
+          <input
+            v-model="tabTargetCommand"
+            type="text"
+            class="input"
+            placeholder="例如：AI助手/对话"
+            @blur="handleTabTargetChange"
+            @keyup.enter="handleTabTargetChange"
+          />
+          <button
+            class="btn btn-icon"
+            title="清除"
+            :style="{ visibility: tabTargetCommand ? 'visible' : 'hidden' }"
+            @click="handleClearTabTarget"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M6 6L14 14M14 6L6 14"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- ==================== 行为 ==================== -->
@@ -726,6 +767,9 @@ const recentRows = ref(2)
 const pinnedRows = ref(2)
 const searchMode = ref<'aggregate' | 'list'>('aggregate')
 
+// Tab 键目标指令
+const tabTargetCommand = ref('')
+
 // 超级面板设置
 const superPanelEnabled = ref(false)
 const superPanelMouseButton = ref<MouseButtonType>('middle')
@@ -1050,6 +1094,30 @@ async function handleSearchModeChange(): Promise<void> {
     console.log('搜索框模式已更新:', searchMode.value)
   } catch (error) {
     console.error('保存搜索框模式配置失败:', error)
+  }
+}
+
+// 处理 Tab 键目标指令变化
+async function handleTabTargetChange(): Promise<void> {
+  try {
+    await saveSettings()
+    // 通知主渲染进程更新
+    await window.ztools.internal.updateTabTarget(tabTargetCommand.value)
+    console.log('Tab 键目标指令已更新:', tabTargetCommand.value)
+  } catch (error) {
+    console.error('保存 Tab 键目标指令失败:', error)
+  }
+}
+
+// 清除 Tab 键目标指令
+async function handleClearTabTarget(): Promise<void> {
+  try {
+    tabTargetCommand.value = ''
+    await saveSettings()
+    await window.ztools.internal.updateTabTarget('')
+    console.log('Tab 键目标指令已清除')
+  } catch (error) {
+    console.error('清除 Tab 键目标指令失败:', error)
   }
 }
 
@@ -1552,6 +1620,9 @@ async function loadSettings(): Promise<void> {
       primaryColor.value = data.primaryColor ?? 'blue'
       searchMode.value = data.searchMode ?? 'aggregate'
       autoCheckUpdate.value = data.autoCheckUpdate ?? true
+      // Tab 键目标指令
+      tabTargetCommand.value = data.tabTargetCommand ?? ''
+
       // 超级面板配置
       superPanelEnabled.value = data.superPanelEnabled ?? false
       superPanelMouseButton.value = data.superPanelMouseButton ?? 'middle'
@@ -1624,6 +1695,7 @@ async function saveSettings(): Promise<void> {
       recentRows: recentRows.value,
       pinnedRows: pinnedRows.value,
       searchMode: searchMode.value,
+      tabTargetCommand: tabTargetCommand.value,
       superPanelEnabled: superPanelEnabled.value,
       superPanelMouseButton: superPanelMouseButton.value,
       superPanelLongPressMs: superPanelLongPressMs.value,
