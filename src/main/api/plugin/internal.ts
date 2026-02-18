@@ -464,6 +464,16 @@ export class InternalPluginAPI {
       return { success: true }
     })
 
+    // 通知主渲染进程更新 Tab 键目标指令
+    ipcMain.handle('internal:update-tab-target', async (event, target: string) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:update-tab-target')
+      }
+      // 广播到主渲染进程
+      this.mainWindow?.webContents.send('update-tab-target', target)
+      return { success: true }
+    })
+
     // 通知主渲染进程更新本地应用搜索配置
     ipcMain.handle('internal:update-local-app-search', async (event, enabled: boolean) => {
       if (!requireInternalPlugin(this.pluginManager, event)) {

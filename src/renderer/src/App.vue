@@ -209,6 +209,49 @@ async function handleArrowKeydown(
   }
 }
 
+// 启动 Tab 键目标指令
+function launchTabTarget(target: string, text: string): void {
+  const commands = commandDataStore.commands
+  let matchedCommand: typeof commands[number] | null = null
+
+  const parts = target.split('/')
+  if (parts.length === 2) {
+    // 格式: 插件名称/指令名称
+    const [pluginDesc, cmdName] = parts
+    matchedCommand =
+      commands.find(
+        (c) =>
+          c.type === 'plugin' &&
+          (c.pluginName === pluginDesc || c.pluginTitle === pluginDesc) &&
+          c.name === cmdName
+      ) || null
+  } else {
+    // 格式: 指令名称（在所有指令中搜索）
+    matchedCommand = commands.find((c) => c.name === target) || null
+  }
+
+  if (!matchedCommand) {
+    console.warn('[Tab Target] 未找到目标指令:', target)
+    new Notification('ZTools', {
+      body: `未找到 Tab 键目标指令「${target}」，请检查设置中的指令名称是否正确`
+    })
+    return
+  }
+
+  console.log('[Tab Target] 启动目标指令:', matchedCommand.name, '携带文本:', text)
+  window.ztools.launch({
+    path: matchedCommand.path,
+    type: matchedCommand.type as 'plugin' | 'direct',
+    featureCode: matchedCommand.featureCode,
+    name: matchedCommand.name,
+    cmdType: matchedCommand.cmdType || 'text',
+    param: {
+      payload: text,
+      type: 'text'
+    }
+  })
+}
+
 // 分离当前插件到独立窗口
 async function detachCurrentPlugin(): Promise<void> {
   try {
@@ -309,6 +352,16 @@ async function handleKeydown(event: KeyboardEvent): Promise<void> {
       window.ztools.hideWindow()
     }
     return
+  }
+
+  // Tab 键：如果配置了目标指令，则启动该指令
+  if (event.key === 'Tab') {
+    const target = windowStore.tabTargetCommand
+    if (target && currentView.value === ViewMode.Search) {
+      event.preventDefault()
+      launchTabTarget(target, searchQuery.value)
+      return
+    }
   }
 
   // Escape 键特殊处理
@@ -566,6 +619,12 @@ onMounted(async () => {
   // 监听固定栏行数更新事件
   window.ztools.onUpdatePinnedRows((rows: number) => {
     windowStore.updatePinnedRows(rows)
+  })
+
+  // 监听 Tab 键目标指令更新事件
+  window.ztools.onUpdateTabTarget((target: string) => {
+    console.log('更新 Tab 键目标指令:', target)
+    windowStore.updateTabTargetCommand(target)
   })
 
   // 监听搜索框模式更新事件
