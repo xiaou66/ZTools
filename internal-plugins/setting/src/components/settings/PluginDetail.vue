@@ -324,7 +324,17 @@
           <div v-else-if="dataError" class="error-container">
             <span>{{ dataError }}</span>
           </div>
-          <div v-else-if="docKeys && docKeys.length > 0" class="data-list">
+          <div v-else-if="docKeys && docKeys.length > 0" class="data-container">
+            <div class="data-header-actions">
+              <button
+                class="btn btn-sm btn-danger"
+                :disabled="isClearing"
+                @click="handleClearAllData"
+              >
+                {{ isClearing ? '清除中...' : '清除全部数据' }}
+              </button>
+            </div>
+            <div class="data-list">
             <div
               v-for="item in docKeys"
               :key="item.key"
@@ -387,6 +397,7 @@
               </Transition>
             </div>
           </div>
+          </div>
           <div v-else class="empty-message">该插件暂无存储数据</div>
         </div>
       </div>
@@ -397,6 +408,7 @@
 <script setup lang="ts">
 import { marked } from 'marked'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useToast } from '../../composables/useToast'
 import DetailPanel from '../common/DetailPanel.vue'
 import Icon from '../common/Icon.vue'
 import CommandTag from './common/CommandTag.vue'
@@ -448,6 +460,8 @@ const emit = defineEmits<{
   (e: 'package'): void
   (e: 'reload'): void
 }>()
+
+const { success, error, confirm } = useToast()
 
 // 插件设置状态
 const showSettingsDropdown = ref(false)
@@ -581,6 +595,7 @@ const dataError = ref<string>('')
 const expandedDataId = ref<string>('')
 const currentDocContent = ref<any>(null)
 const currentDocType = ref<'document' | 'attachment'>('document')
+const isClearing = ref(false)
 
 // 配置 marked
 marked.setOptions({
@@ -689,6 +704,42 @@ async function loadPluginData(): Promise<void> {
   }
 }
 
+// 清除插件全部数据
+async function handleClearAllData(): Promise<void> {
+  if (!props.plugin.name || isClearing.value) return
+
+  // 确认弹窗，说明危险性
+  const confirmed = await confirm({
+    title: '清除全部数据',
+    message: `确定要清除插件"${props.plugin.name}"的全部数据吗？\n\n⚠️ 警告：此操作将永久删除该插件存储的所有数据，包括文档和附件。\n\n此操作不可恢复，请谨慎操作！`,
+    type: 'danger',
+    confirmText: '清除',
+    cancelText: '取消'
+  })
+
+  if (!confirmed) return
+
+  isClearing.value = true
+  try {
+    const result = await window.ztools.internal.clearPluginData(props.plugin.name)
+    if (result.success) {
+      success('插件数据已清除')
+      // 清空当前展开的数据
+      expandedDataId.value = ''
+      currentDocContent.value = null
+      // 重新加载数据列表
+      await loadPluginData()
+    } else {
+      error(`清除失败: ${result.error}`)
+    }
+  } catch (err: any) {
+    console.error('清除插件数据失败:', err)
+    error(`清除失败: ${err.message || '未知错误'}`)
+  } finally {
+    isClearing.value = false
+  }
+}
+
 // 版本比较函数
 function compareVersions(v1: string, v2: string): number {
   if (!v1 || !v2) return 0
@@ -713,7 +764,7 @@ const canUpgrade = computed(() => {
 
 // 处理卸载
 function handleUninstall(): void {
-  const confirmed = confirm(
+  const confirmed = window.confirm(
     `确定要卸载插件"${props.plugin.name}"吗？\n\n卸载后将删除插件文件和相关数据，此操作不可恢复。`
   )
   if (confirmed) {
@@ -1334,6 +1385,20 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* 数据容器 */
+.data-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 数据头部操作区 */
+.data-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 4px;
 }
 
 /* 数据列表样式 */

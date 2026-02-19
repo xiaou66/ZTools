@@ -70,7 +70,7 @@ declare global {
           error?: string
           plugin?: any
         }>
-        importDevPlugin: () => Promise<{ success: boolean; error?: string }>
+        importDevPlugin: (pluginJsonPath?: string) => Promise<{ success: boolean; error?: string }>
         deletePlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
         killPlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
         reloadPlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
