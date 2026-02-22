@@ -16,6 +16,7 @@ import windowsIcon from '../../../resources/icons/windows-icon.png?asset'
 
 import api from '../api'
 import databaseAPI from '../api/shared/database'
+import doubleTapManager from '../core/doubleTapManager.js'
 import clipboardManager from './clipboardManager'
 
 import { WINDOW_INITIAL_HEIGHT, WINDOW_DEFAULT_HEIGHT, WINDOW_WIDTH } from '../common/constants'
@@ -36,6 +37,8 @@ class WindowManager {
   private tray: Tray | null = null
   private trayMenu: Menu | null = null // 托盘菜单
   private currentShortcut = 'Option+Z' // 当前注册的快捷键
+  private isDoubleTapMode = false // 当前呼出快捷键是否为双击修饰键模式
+  private static readonly MODIFIER_NAMES = ['Command', 'Ctrl', 'Alt', 'Option', 'Shift']
   private isQuitting = false // 是否正在退出应用
   private previousActiveWindow: {
     app: string
@@ -335,14 +338,42 @@ class WindowManager {
   }
 
   /**
-   * 注册全局快捷键
+   * 判断是否为双击修饰键快捷键（如 "Ctrl+Ctrl"）
+   */
+  private isDoubleTapShortcut(shortcut: string): boolean {
+    const parts = shortcut.split('+')
+    return (
+      parts.length === 2 && parts[0] === parts[1] && WindowManager.MODIFIER_NAMES.includes(parts[0])
+    )
+  }
+
+  /**
+   * 注册全局快捷键（支持双击修饰键）
    */
   public registerShortcut(shortcut?: string): boolean {
-    // 先注销旧的快捷键
-    globalShortcut.unregisterAll()
-
     const keyToRegister = shortcut || this.currentShortcut
 
+    // 注销旧的呼出快捷键（仅注销当前快捷键，不影响其他全局快捷键）
+    if (this.isDoubleTapMode) {
+      const oldModifier = this.currentShortcut.split('+')[0]
+      doubleTapManager.unregister(oldModifier)
+    } else {
+      globalShortcut.unregister(this.currentShortcut)
+    }
+
+    // 双击修饰键模式：通过 doubleTapManager 注册
+    if (this.isDoubleTapShortcut(keyToRegister)) {
+      const modifier = keyToRegister.split('+')[0]
+      doubleTapManager.register(modifier, () => {
+        this.toggleWindow()
+      })
+      this.currentShortcut = keyToRegister
+      this.isDoubleTapMode = true
+      console.log(`双击修饰键呼出快捷键 ${keyToRegister} 注册成功`)
+      return true
+    }
+
+    // 普通快捷键模式：通过 globalShortcut 注册
     const ret = globalShortcut.register(keyToRegister, () => {
       this.toggleWindow()
     })
@@ -352,6 +383,7 @@ class WindowManager {
       return false
     } else {
       this.currentShortcut = keyToRegister
+      this.isDoubleTapMode = false
       console.log(`快捷键 ${keyToRegister} 注册成功`)
     }
 
@@ -650,6 +682,8 @@ class WindowManager {
    */
   public unregisterAllShortcuts(): void {
     globalShortcut.unregisterAll()
+    doubleTapManager.unregisterAll()
+    this.isDoubleTapMode = false
   }
 
   /**
