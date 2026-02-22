@@ -4,6 +4,24 @@
     <Transition name="list-slide">
       <div v-show="!isDetailVisible" class="scrollable-content">
         <div class="panel-header">
+          <div class="filter-group">
+            <button
+              class="filter-btn"
+              :class="{ active: filterStatus === 'all' }"
+              @click="filterStatus = 'all'"
+            >
+              全部
+              <span class="count-badge">{{ allPluginsCount }}</span>
+            </button>
+            <button
+              class="filter-btn"
+              :class="{ active: filterStatus === 'running' }"
+              @click="filterStatus = 'running'"
+            >
+              运行中
+              <span class="count-badge">{{ runningPluginsCount }}</span>
+            </button>
+          </div>
           <div class="button-group">
             <button class="btn btn-purple" :disabled="isImportingDev" @click="importDevPlugin">
               {{ isImportingDev ? '添加中...' : '添加开发中插件' }}
@@ -234,12 +252,32 @@ const isPackaging = ref(false)
 const isDetailVisible = ref(false)
 const selectedPlugin = ref<any | null>(null)
 
-const filteredPlugins = computed(() =>
-  weightedSearch(plugins.value, props.searchQuery || '', [
+// 过滤状态
+const filterStatus = ref<'all' | 'running'>('all')
+
+// 先进行搜索过滤（不考虑运行状态）
+const searchFilteredPlugins = computed(() => {
+  return weightedSearch(plugins.value, props.searchQuery || '', [
     { value: (p) => p.title || p.name || '', weight: 10 },
     { value: (p) => p.description || '', weight: 5 }
   ])
-)
+})
+
+// 全部插件数量（经过搜索过滤）
+const allPluginsCount = computed(() => searchFilteredPlugins.value.length)
+
+// 运行中插件数量（经过搜索过滤）
+const runningPluginsCount = computed(() => {
+  return searchFilteredPlugins.value.filter((p) => isPluginRunning(p.path)).length
+})
+
+// 最终显示的插件列表（根据状态过滤）
+const filteredPlugins = computed(() => {
+  if (filterStatus.value === 'running') {
+    return searchFilteredPlugins.value.filter((p) => isPluginRunning(p.path))
+  }
+  return searchFilteredPlugins.value
+})
 
 // 加载插件列表
 async function loadPlugins(): Promise<void> {
@@ -660,9 +698,55 @@ function closePluginDetail(): void {
 /* 插件中心样式 */
 .panel-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+}
+
+.filter-group {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-color);
+}
+
+.filter-btn.active {
+  background: var(--primary-light-bg);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  font-weight: 600;
+}
+
+.count-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--active-bg);
+  color: var(--text-secondary);
+}
+
+.filter-btn.active .count-badge {
+  background: var(--primary-color);
+  color: var(--text-on-primary);
 }
 
 .button-group {
