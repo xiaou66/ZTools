@@ -64,7 +64,7 @@ export class PluginRedirectAPI {
   }
 
   private async processRedirect(label: string | [string, string], payload?: any): Promise<void> {
-    // console.log('[Redirect] processRedirect', label, payload)
+    console.log('[Redirect] processRedirect', label, payload)
 
     // 检查 payload 类型：只支持字符串类型（用于 regex 或 over 类型的匹配指令）
     if (payload !== undefined && payload !== null && typeof payload !== 'string') {
@@ -92,8 +92,8 @@ export class PluginRedirectAPI {
 
       if (Array.isArray(label)) {
         // [插件名称, 指令名称]
-        const [pluginName, cmdName] = label
-        targetPlugin = plugins.find((p: any) => p.name === pluginName)
+        const [pluginTitle, cmdName] = label
+        targetPlugin = plugins.find((p: any) => p.title === pluginTitle)
 
         if (targetPlugin) {
           // 查找对应的 feature 和匹配 payload 的 cmd
@@ -118,7 +118,8 @@ export class PluginRedirectAPI {
         }
 
         if (!targetPlugin || !targetFeature) {
-          this.showNotification(`未找到插件或指令: ${pluginName} - ${cmdName}`)
+          console.log('[Redirect] 未找到插件或指令:', pluginTitle, cmdName)
+          this.showNotification(`未找到插件或指令: ${pluginTitle} - ${cmdName}`)
           return
         }
 
