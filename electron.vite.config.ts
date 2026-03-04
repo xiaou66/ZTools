@@ -25,6 +25,7 @@ export default defineConfig({
     plugins: [vue()],
     server: {
       port: 5174,
+      host: '127.0.0.1',
       open: false
     },
     build: {
