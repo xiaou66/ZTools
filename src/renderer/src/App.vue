@@ -417,12 +417,12 @@ async function handleKeydown(event: KeyboardEvent): Promise<void> {
   ) {
     // SearchBox 可能已拦截 Backspace（如清理粘贴态），避免重复处理
     if (event.defaultPrevented) {
-      console.log('[PluginExit] 跳过处理：事件已被其他逻辑消费')
+      console.log('[PluginExit] Backspace 跳过处理：事件已被其他逻辑消费')
       return
     }
 
     event.preventDefault()
-    console.log('[PluginExit] 命中条件：空输入 Backspace，进入分步退出逻辑')
+    console.log('[PluginExit] Backspace 命中条件：空输入 Backspace，进入分步退出逻辑')
     handlePluginStepExit()
     return
   }
