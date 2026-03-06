@@ -161,7 +161,7 @@ function exitPluginToSearch(): void {
   currentView.value = ViewMode.Search
   searchQuery.value = ''
   window.ztools.hidePlugin()
-  console.log('[BackspaceExit] 已退出插件并返回搜索视图')
+  console.log('[PluginExit] 已退出插件并返回搜索视图')
 }
 
 /**
@@ -417,12 +417,12 @@ async function handleKeydown(event: KeyboardEvent): Promise<void> {
   ) {
     // SearchBox 可能已拦截 Backspace（如清理粘贴态），避免重复处理
     if (event.defaultPrevented) {
-      console.log('[BackspaceExit] 跳过处理：事件已被其他逻辑消费')
+      console.log('[PluginExit] 跳过处理：事件已被其他逻辑消费')
       return
     }
 
     event.preventDefault()
-    console.log('[BackspaceExit] 命中条件：空输入 Backspace，进入分步退出逻辑')
+    console.log('[PluginExit] 命中条件：空输入 Backspace，进入分步退出逻辑')
     handlePluginStepExit()
     return
   }
@@ -432,7 +432,7 @@ async function handleKeydown(event: KeyboardEvent): Promise<void> {
     event.preventDefault()
 
     if (currentView.value === ViewMode.Plugin) {
-      console.log('[BackspaceExit] ESC 触发分步退出逻辑')
+      console.log('[PluginExit] ESC 触发分步退出逻辑')
       handlePluginStepExit()
       return
     }
