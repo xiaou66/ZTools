@@ -36,7 +36,7 @@ async function loadPluginInfo(filePath?: string): Promise<void> {
   }
 
   try {
-    const result = await window.ztools.internal.readPluginInfoFromZip(filePath)
+    const result = await window.ztools.internal.readPluginInfoFromZpx(filePath)
     if (result.success && result.pluginInfo) {
       pluginInfo.value = result.pluginInfo
       installFilePath.value = filePath
@@ -222,91 +222,6 @@ onBeforeRouteUpdate(() => {
     </Transition>
   </div>
 </template>
-
-<script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useToast } from '../../composables/useToast'
-
-interface PluginInfo {
-  name: string
-  title: string
-  version: string
-  description: string
-  author: string
-  logo: string
-  features: Array<{ code: string; explain?: string }>
-  isInstalled: boolean
-}
-
-const props = defineProps<{
-  filePath: string
-}>()
-
-const emit = defineEmits<{
-  (e: 'installed', pluginName: string): void
-}>()
-
-const { success, error: showError } = useToast()
-
-const loading = ref(true)
-const errorMsg = ref('')
-const pluginInfo = ref<PluginInfo | null>(null)
-const installing = ref(false)
-const showSecurityDialog = ref(false)
-
-onMounted(async () => {
-  await loadPluginInfo()
-})
-
-async function loadPluginInfo(): Promise<void> {
-  if (!props.filePath) {
-    errorMsg.value = '未提供插件文件路径'
-    loading.value = false
-    return
-  }
-
-  try {
-    const result = await window.ztools.internal.readPluginInfoFromZpx(props.filePath)
-    if (result.success) {
-      pluginInfo.value = result.pluginInfo
-    } else {
-      errorMsg.value = result.error || '读取插件信息失败'
-    }
-  } catch (err: unknown) {
-    errorMsg.value = err instanceof Error ? err.message : '读取插件信息失败'
-  } finally {
-    loading.value = false
-  }
-}
-
-function handleInstallClick(): void {
-  showSecurityDialog.value = true
-}
-
-async function confirmInstall(): Promise<void> {
-  showSecurityDialog.value = false
-  installing.value = true
-
-  try {
-    const result = await window.ztools.internal.installPluginFromPath(props.filePath)
-    if (result.success) {
-      const wasInstalled = pluginInfo.value?.isInstalled
-      const actionText = wasInstalled ? '覆盖安装' : '安装'
-      success(`插件${actionText}成功`)
-      // 跳转到插件中心并打开插件详情
-      if (pluginInfo.value) {
-        emit('installed', pluginInfo.value.name)
-      }
-    } else {
-      showError(result.error || '安装失败')
-    }
-  } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : '安装失败')
-  } finally {
-    installing.value = false
-  }
-}
-</script>
 
 <style scoped>
 .installer-container {
