@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { useCommandDataStore } from '../stores/commandDataStore'
+import { useWindowStore } from '../stores/windowStore'
 
 /**
  * 去重：同一个 feature 只保留第一个匹配的 cmd
@@ -53,6 +54,7 @@ export function useSearchResults(props: {
   allListModeResults: any
 } {
   const commandDataStore = useCommandDataStore()
+  const windowStore = useWindowStore()
   const { search, searchInCommands, searchImageCommands, searchTextCommands, searchFileCommands } =
     commandDataStore
 
@@ -189,6 +191,10 @@ export function useSearchResults(props: {
 
   // 推荐列表（over 类型）
   const recommendations = computed(() => {
+    if (!windowStore.showMatchRecommendation) {
+      return []
+    }
+
     // 粘贴图片或文件时不显示推荐
     if (props.pastedImage || props.pastedFiles) return []
 

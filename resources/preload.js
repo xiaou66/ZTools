@@ -696,6 +696,12 @@ window.ztools = {
         'internal:update-show-recent-in-search',
         showRecentInSearch
       ),
+    // 通知主渲染进程更新匹配推荐配置
+    updateMatchRecommendation: async (showMatchRecommendation) =>
+      await electron.ipcRenderer.invoke(
+        'internal:update-match-recommendation',
+        showMatchRecommendation
+      ),
     // 通知主渲染进程更新最近使用行数
     updateRecentRows: async (rows) =>
       await electron.ipcRenderer.invoke('internal:update-recent-rows', rows),

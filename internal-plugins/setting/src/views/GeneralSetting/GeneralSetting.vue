@@ -123,6 +123,7 @@ const autoPaste = ref<AutoPasteOption>('off')
 const autoClear = ref<AutoClearOption>('immediately')
 const autoBackToSearch = ref<AutoBackToSearchOption>('never')
 const showRecentInSearch = ref(true)
+const showMatchRecommendation = ref(true)
 const localAppSearch = ref(true)
 const recentRows = ref(2)
 const pinnedRows = ref(2)
@@ -437,6 +438,18 @@ async function handleShowRecentInSearchChange(): Promise<void> {
     console.log('显示最近使用配置已更新:', showRecentInSearch.value)
   } catch (error) {
     console.error('保存显示最近使用配置失败:', error)
+  }
+}
+
+// 处理匹配推荐配置变化
+async function handleShowMatchRecommendationChange(): Promise<void> {
+  try {
+    await saveSettings()
+    // 通知主渲染进程更新
+    await window.ztools.internal.updateMatchRecommendation(showMatchRecommendation.value)
+    console.log('匹配推荐配置已更新:', showMatchRecommendation.value)
+  } catch (error) {
+    console.error('保存匹配推荐配置失败:', error)
   }
 }
 
@@ -905,6 +918,7 @@ async function loadSettings(): Promise<void> {
       autoClear.value = data.autoClear ?? 'immediately'
       autoBackToSearch.value = data.autoBackToSearch ?? 'never'
       showRecentInSearch.value = data.showRecentInSearch ?? true
+      showMatchRecommendation.value = data.showMatchRecommendation ?? true
       localAppSearch.value = data.localAppSearch ?? true
       recentRows.value = data.recentRows ?? 2
       pinnedRows.value = data.pinnedRows ?? 2
@@ -980,6 +994,7 @@ async function saveSettings(): Promise<void> {
       autoClear: autoClear.value,
       autoBackToSearch: autoBackToSearch.value,
       showRecentInSearch: showRecentInSearch.value,
+      showMatchRecommendation: showMatchRecommendation.value,
       localAppSearch: localAppSearch.value,
       recentRows: recentRows.value,
       pinnedRows: pinnedRows.value,
@@ -1318,6 +1333,23 @@ onMounted(() => {
               v-model="showRecentInSearch"
               type="checkbox"
               @change="handleShowRecentInSearchChange"
+            />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-label">
+          <span>匹配推荐</span>
+          <span class="setting-desc">开启后显示搜索结果中的匹配推荐分组</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input
+              v-model="showMatchRecommendation"
+              type="checkbox"
+              @change="handleShowMatchRecommendationChange"
             />
             <span class="toggle-slider"></span>
           </label>

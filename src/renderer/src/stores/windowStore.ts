@@ -82,6 +82,7 @@ export const useWindowStore = defineStore('window', () => {
   // 自动清空配置
   const autoClear = ref<AutoClearOption>('immediately')
   const showRecentInSearch = ref(true)
+  const showMatchRecommendation = ref(true)
   // 最近使用显示行数
   const recentRows = ref(2)
   // 固定栏显示行数
@@ -182,6 +183,10 @@ export const useWindowStore = defineStore('window', () => {
   // 更新是否显示最近使用
   function updateShowRecentInSearch(value: boolean): void {
     showRecentInSearch.value = value
+  }
+
+  function updateShowMatchRecommendation(value: boolean): void {
+    showMatchRecommendation.value = value
   }
 
   function updateRecentRows(rows: number): void {
@@ -507,6 +512,9 @@ export const useWindowStore = defineStore('window', () => {
         if (data.showRecentInSearch !== undefined) {
           showRecentInSearch.value = data.showRecentInSearch
         }
+        if (data.showMatchRecommendation !== undefined) {
+          showMatchRecommendation.value = data.showMatchRecommendation
+        }
         if (data.recentRows) {
           recentRows.value = data.recentRows
         }
@@ -553,6 +561,7 @@ export const useWindowStore = defineStore('window', () => {
     autoPaste,
     autoClear,
     showRecentInSearch,
+    showMatchRecommendation,
     theme,
     primaryColor,
     customColor,
@@ -570,6 +579,7 @@ export const useWindowStore = defineStore('window', () => {
     updateAutoPaste,
     updateAutoClear,
     updateShowRecentInSearch,
+    updateShowMatchRecommendation,
     recentRows,
     pinnedRows,
     updateRecentRows,

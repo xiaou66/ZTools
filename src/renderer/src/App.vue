@@ -670,6 +670,11 @@ onMounted(async () => {
     windowStore.updateShowRecentInSearch(showRecentInSearch)
   })
 
+  // 监听匹配推荐配置更新事件
+  window.ztools.onUpdateMatchRecommendation((showMatchRecommendation: boolean) => {
+    windowStore.updateShowMatchRecommendation(showMatchRecommendation)
+  })
+
   // 监听最近使用行数更新事件
   window.ztools.onUpdateRecentRows((rows: number) => {
     windowStore.updateRecentRows(rows)

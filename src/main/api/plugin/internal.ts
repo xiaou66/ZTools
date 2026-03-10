@@ -504,6 +504,18 @@ export class InternalPluginAPI {
       }
     )
 
+    // 通知主渲染进程更新匹配推荐配置
+    ipcMain.handle(
+      'internal:update-match-recommendation',
+      async (event, showMatchRecommendation: boolean) => {
+        if (!requireInternalPlugin(this.pluginManager, event)) {
+          throw new PermissionDeniedError('internal:update-match-recommendation')
+        }
+        this.mainWindow?.webContents.send('update-match-recommendation', showMatchRecommendation)
+        return { success: true }
+      }
+    )
+
     // 通知主渲染进程更新最近使用行数
     ipcMain.handle('internal:update-recent-rows', async (event, rows: number) => {
       if (!requireInternalPlugin(this.pluginManager, event)) {

@@ -179,6 +179,11 @@ const api = {
       callback(showRecentInSearch)
     )
   },
+  onUpdateMatchRecommendation: (callback: (showMatchRecommendation: boolean) => void) => {
+    ipcRenderer.on('update-match-recommendation', (_event, showMatchRecommendation) =>
+      callback(showMatchRecommendation)
+    )
+  },
   onUpdateRecentRows: (callback: (rows: number) => void) => {
     ipcRenderer.on('update-recent-rows', (_event, rows) => callback(rows))
   },
@@ -552,6 +557,7 @@ declare global {
       ) => void
       onUpdateSubInputVisible: (callback: (visible: boolean) => void) => void
       onUpdateShowRecentInSearch: (callback: (showRecentInSearch: boolean) => void) => void
+      onUpdateMatchRecommendation: (callback: (showMatchRecommendation: boolean) => void) => void
       // 数据库相关（主程序专用，直接操作 ZTOOLS 命名空间）
       dbPut: (key: string, data: any) => Promise<any>
       dbGet: (key: string) => Promise<any>

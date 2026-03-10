@@ -252,6 +252,7 @@ declare global {
       onUpdateAutoPaste: (callback: (autoPaste: string) => void) => void
       onUpdateAutoClear: (callback: (autoClear: string) => void) => void
       onUpdateShowRecentInSearch: (callback: (showRecentInSearch: boolean) => void) => void
+      onUpdateMatchRecommendation: (callback: (showMatchRecommendation: boolean) => void) => void
       onUpdateRecentRows: (callback: (rows: number) => void) => void
       onUpdatePinnedRows: (callback: (rows: number) => void) => void
       onUpdateTabTarget: (callback: (target: string) => void) => void
