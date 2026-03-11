@@ -139,7 +139,7 @@ Renderer Process (src/renderer/)
 - 插件通过 `resources/preload.js` 访问受限的主进程 API
   - 使用 `session.registerPreloadScript()` 注入到所有插件
 - 支持两种部署模式：
-  - **生产插件**：打包的 ZPX 文件（gzip 压缩的 asar 归档）→ 解压到 `userData/plugins/`
+  - **生产插件**：打包的 ZPX 文件（brotli 压缩的 asar 归档）→ 解压到 `userData/plugins/`
   - **开发插件**：本地文件夹，支持 HTTP URL（如 `http://localhost:5173`）
 - 数据隔离：每个插件的数据库操作自动添加 `PLUGIN/{pluginName}/` 前缀（通过 `getPluginPrefix()` 方法识别调用来源）
 
@@ -954,7 +954,7 @@ installPluginFromMarket() - 下载并安装插件
 
 **工具函数**（`src/main/utils/`）：
 
-- `zpxArchive.ts` - ZPX 归档工具（@electron/asar + gzip）
+- `zpxArchive.ts` - ZPX 归档工具（@electron/asar + brotli）
   - `packZpx()` - 将目录打包为 ZPX 文件
   - `extractZpx()` - 解压 ZPX 文件到目录
   - `readFileFromZpx()` - 从 ZPX 中读取单个文件（Buffer）
@@ -1167,7 +1167,7 @@ updater 重启应用
   - 插件状态管理（未安装/已安装/可升级）
   - 插件升级流程（`handleUpgradePlugin()`）
 - `src/renderer/src/components/PluginDetail.vue` - 插件详情弹窗
-- `src/main/utils/zpxArchive.ts` - ZPX 归档工具（asar + gzip）
+- `src/main/utils/zpxArchive.ts` - ZPX 归档工具（asar + brotli）
   - `packZpx()` / `extractZpx()` - 打包/解压 ZPX
   - `readFileFromZpx()` / `readTextFromZpx()` - 读取 ZPX 内文件
 - `src/main/utils/lanzou.ts` - 蓝奏云 API 工具
@@ -1825,6 +1825,6 @@ window.exports = {
 
 - **完整性**：asar 归档保留完整的目录结构和元数据，比 ZIP 更可靠
 - **兼容性**：asar 是 Electron 原生支持的归档格式，与 Electron 生态一致
-- **性能**：gzip 流式压缩/解压，内存占用更低，适合大型插件
+- **性能**：brotli 流式压缩/解压，压缩率更高，内存占用低，适合大型插件
 - **安全性**：避免 ZIP 路径穿越等安全漏洞，asar 格式天然安全
-- **格式**：`.zpx = gzip(asar archive)`，Magic bytes: `0x1f 0x8b`
+- **格式**：`.zpx = ZPX_MAGIC(4 bytes) + brotli(asar archive)`，Magic bytes: `0x5a 0x50 0x58 0x02` ('ZPX\x02')

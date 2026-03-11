@@ -930,7 +930,7 @@ export class PluginsAPI {
       }
 
       console.log('[Plugins] 插件下载完成:', tempFilePath)
-      // 自动检测格式：ZPX（gzip）或 ZIP（旧格式兼容）
+      // 自动检测格式：ZPX（brotli）或 ZIP（旧格式兼容）
       const isZpx = await isValidZpx(tempFilePath)
       const result = isZpx
         ? await this._installPluginFromZpx(tempFilePath)

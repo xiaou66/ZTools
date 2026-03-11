@@ -1,22 +1,22 @@
 /**
  * ZPX 归档工具模块
  *
- * ZPX 格式：gzip( asar archive )
- * 打包流程：目录 → asar.createPackage() → gzip 压缩 → .zpx 文件
- * 解压流程：.zpx 文件 → gunzip 解压 → asar.extractAll() → 目标目录
- * 预览流程：.zpx 文件 → gunzip 到临时 .asar → asar.extractFile() 读取指定文件 → 清理临时文件
+ * ZPX 格式：ZPX_MAGIC(4 bytes) + brotli( asar archive )
+ * 打包流程：目录 → asar.createPackage() → brotli 压缩 → 写入 magic header → .zpx 文件
+ * 解压流程：.zpx 文件 → 跳过 magic header → brotli 解压 → asar.extractAll() → 目标目录
+ * 预览流程：.zpx 文件 → brotli 解压到临时 .asar → asar.extractFile() 读取指定文件 → 清理临时文件
  */
 
 import * as asar from '@electron/asar'
-import { createGzip, createGunzip } from 'zlib'
+import { createBrotliCompress, createBrotliDecompress } from 'zlib'
 import { createReadStream, createWriteStream } from 'fs'
 import { promises as fs } from 'fs'
 import path from 'path'
 import os from 'os'
 import { pipeline } from 'stream/promises'
 
-/** gzip 文件的 magic bytes：0x1f 0x8b */
-const GZIP_MAGIC = Buffer.from([0x1f, 0x8b])
+/** ZPX 文件的 magic bytes：'ZPX' + 版本号 0x02 (brotli) */
+const ZPX_MAGIC = Buffer.from([0x5a, 0x50, 0x58, 0x02])
 
 /**
  * 生成唯一的临时文件路径（基于时间戳和随机数）
@@ -29,11 +29,11 @@ function getTempPath(ext: string): string {
 }
 
 /**
- * 将 .zpx 文件 gunzip 解压到临时 .asar 文件
+ * 将 .zpx 文件 brotli 解压到临时 .asar 文件
  * @param zpxPath .zpx 文件路径
  * @returns 临时 .asar 文件路径（调用者负责清理）
  */
-async function gunzipToTemp(zpxPath: string): Promise<string> {
+async function decompressToTemp(zpxPath: string): Promise<string> {
   const tempAsarPath = getTempPath('.asar')
 
   // 临时禁用 Electron 的 asar 路径拦截，防止 fs 操作被 Electron 特殊处理
@@ -41,8 +41,9 @@ async function gunzipToTemp(zpxPath: string): Promise<string> {
   process.noAsar = true
 
   try {
-    // .zpx → gunzip → 临时 .asar
-    await pipeline(createReadStream(zpxPath), createGunzip(), createWriteStream(tempAsarPath))
+    // .zpx → 跳过 4 字节 magic header → brotli 解压 → 临时 .asar
+    const readStream = createReadStream(zpxPath, { start: ZPX_MAGIC.length })
+    await pipeline(readStream, createBrotliDecompress(), createWriteStream(tempAsarPath))
     return tempAsarPath
   } catch (error) {
     // 解压失败时清理临时文件
@@ -75,7 +76,7 @@ async function cleanupTemp(tempAsarPath: string): Promise<void> {
 
 /**
  * 打包目录为 .zpx 文件
- * 流程：目录 → asar.createPackage() → gzip 压缩 → .zpx 文件
+ * 流程：目录 → asar.createPackage() → brotli 压缩 → .zpx 文件
  *
  * @param sourceDir 源目录路径
  * @param outputPath 输出的 .zpx 文件路径
@@ -93,8 +94,10 @@ export async function packZpx(sourceDir: string, outputPath: string): Promise<vo
     // 目录 → asar 归档
     await asar.createPackage(sourceDir, tempAsarPath)
 
-    // asar → gzip → .zpx
-    await pipeline(createReadStream(tempAsarPath), createGzip(), createWriteStream(outputPath))
+    // 写入 magic header + brotli 压缩的 asar → .zpx
+    const writeStream = createWriteStream(outputPath)
+    writeStream.write(ZPX_MAGIC)
+    await pipeline(createReadStream(tempAsarPath), createBrotliCompress(), writeStream)
 
     console.log('[ZPX] 打包完成:', outputPath)
   } finally {
@@ -110,7 +113,7 @@ export async function packZpx(sourceDir: string, outputPath: string): Promise<vo
 
 /**
  * 解压 .zpx 文件到目标目录
- * 流程：.zpx → gunzip → 临时 .asar → asar.extractAll() → 目标目录
+ * 流程：.zpx → brotli 解压 → 临时 .asar → asar.extractAll() → 目标目录
  *
  * @param zpxPath .zpx 文件路径
  * @param targetDir 目标目录路径（如不存在会自动创建）
@@ -118,8 +121,8 @@ export async function packZpx(sourceDir: string, outputPath: string): Promise<vo
 export async function extractZpx(zpxPath: string, targetDir: string): Promise<void> {
   console.log('[ZPX] 解压:', zpxPath, '→', targetDir)
 
-  // .zpx → gunzip → 临时 .asar
-  const tempAsarPath = await gunzipToTemp(zpxPath)
+  // .zpx → brotli 解压 → 临时 .asar
+  const tempAsarPath = await decompressToTemp(zpxPath)
 
   const prevNoAsar = process.noAsar
   process.noAsar = true
@@ -140,14 +143,14 @@ export async function extractZpx(zpxPath: string, targetDir: string): Promise<vo
 
 /**
  * 从 .zpx 文件中读取指定文件内容
- * 流程：gunzip 到临时 .asar → asar.extractFile() 读取目标文件 → 清理临时文件
+ * 流程：brotli 解压到临时 .asar → asar.extractFile() 读取目标文件 → 清理临时文件
  *
  * @param zpxPath .zpx 文件路径
  * @param filePath 归档内的文件相对路径（如 'plugin.json'）
  * @returns 文件内容的 Buffer
  */
 export async function readFileFromZpx(zpxPath: string, filePath: string): Promise<Buffer> {
-  const tempAsarPath = await gunzipToTemp(zpxPath)
+  const tempAsarPath = await decompressToTemp(zpxPath)
 
   const prevNoAsar = process.noAsar
   process.noAsar = true
@@ -176,14 +179,14 @@ export async function readTextFromZpx(zpxPath: string, filePath: string): Promis
 
 /**
  * 检查 .zpx 文件中是否存在指定文件
- * 流程：gunzip 到临时 .asar → asar.listPackage() 检查 → 清理临时文件
+ * 流程：brotli 解压到临时 .asar → asar.listPackage() 检查 → 清理临时文件
  *
  * @param zpxPath .zpx 文件路径
  * @param filePath 归档内的文件相对路径
  * @returns 文件是否存在
  */
 export async function existsInZpx(zpxPath: string, filePath: string): Promise<boolean> {
-  const tempAsarPath = await gunzipToTemp(zpxPath)
+  const tempAsarPath = await decompressToTemp(zpxPath)
 
   const prevNoAsar = process.noAsar
   process.noAsar = true
@@ -203,20 +206,20 @@ export async function existsInZpx(zpxPath: string, filePath: string): Promise<bo
 }
 
 /**
- * 验证文件是否为有效的 ZPX 格式（gzip）
- * 通过 magic bytes 判断：gzip 以 0x1f 0x8b 开头
+ * 验证文件是否为有效的 ZPX 格式（brotli）
+ * 通过 magic bytes 判断：ZPX 文件以 'ZPX\x02' (0x5a 0x50 0x58 0x02) 开头
  *
  * @param filePath 文件路径
  * @returns 是否为有效的 ZPX 格式
  */
 export async function isValidZpx(filePath: string): Promise<boolean> {
   try {
-    // 读取文件前 2 个字节判断 gzip magic bytes
+    // 读取文件前 4 个字节判断 ZPX magic bytes
     const fd = await fs.open(filePath, 'r')
     try {
-      const buf = Buffer.alloc(2)
-      await fd.read(buf, 0, 2, 0)
-      return buf[0] === GZIP_MAGIC[0] && buf[1] === GZIP_MAGIC[1]
+      const buf = Buffer.alloc(4)
+      await fd.read(buf, 0, 4, 0)
+      return buf.equals(ZPX_MAGIC)
     } finally {
       await fd.close()
     }
